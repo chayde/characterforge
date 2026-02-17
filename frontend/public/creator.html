@@ -186,7 +186,13 @@
 
         function renderManual() {
             rolledPool = [];
-            let html = `<div class="mb-8"><p class="text-sm text-gray-400 italic mb-4">Roll 4d6 for each slot. We'll drop the lowest!</p>
+            let html = `<div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <p class="text-sm text-gray-400 italic">Roll 4d6 for each slot. We'll drop the lowest!</p>
+                    <button onclick="renderManual()" class="text-xs text-red-400 hover:text-red-300 border border-red-900 px-2 py-1 rounded">
+                        <i class="fa-solid fa-rotate-right mr-1"></i>Reset Rolls
+                    </button>
+                </div>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4" id="roll-slots">`;
             for (let i = 0; i < 6; i++) {
                 html += `<div id="slot-${i}" class="bg-[#111] p-4 rounded-lg text-center border border-gray-800">
