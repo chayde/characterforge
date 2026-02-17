@@ -39,6 +39,8 @@ export PYTHONPATH=$PYTHONPATH:.
 ```bash
 docker-compose up --build
 ```
+*Note: On Linux, if you get a "Permission Denied" error, run with `sudo` or add your user to the `docker` group.*
+
 The application will be available at `http://localhost:8000`.
 
 ## Development Conventions
