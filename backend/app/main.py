@@ -68,3 +68,8 @@ async def get_character(char_id: int, db: AsyncSession = Depends(get_session)):
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
     return char
+
+# Serve Frontend
+frontend_path = os.path.join(os.getcwd(), "frontend/public")
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
