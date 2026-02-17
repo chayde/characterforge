@@ -33,10 +33,10 @@ async def on_startup():
 # Auth Routes
 @app.post("/api/register", response_model=UserResponse)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_session)):
-    hashed_pwd = get_password_hash(user_data.password)
-    new_user = User(username=user_data.username, email=user_data.email, hashed_password=hashed_pwd)
-    db.add(new_user)
     try:
+        hashed_pwd = get_password_hash(user_data.password)
+        new_user = User(username=user_data.username, email=user_data.email, hashed_password=hashed_pwd)
+        db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
         logger.info(f"New user registered: {new_user.username}")
