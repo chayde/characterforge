@@ -87,6 +87,7 @@
     <script>
         let currentStep = 1;
         let scores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+        let rolledPool = [];
         const pointBuyCosts = { 8:0, 9:1, 10:2, 11:3, 12:4, 13:5, 14:7, 15:9 };
         let pointsRemaining = 27;
 
@@ -126,7 +127,6 @@
 
         function updateGenMethod() {
             const method = document.getElementById('gen-method').value;
-            const container = document.getElementById('method-container');
             if (method === 'array') renderStandardArray();
             else if (method === 'pointbuy') renderPointBuy();
             else renderManual();
@@ -150,6 +150,7 @@
         function validateArray(selected) {
             const allSelects = document.querySelectorAll('.array-select');
             allSelects.forEach(s => {
+                const currentVal = s.value;
                 Array.from(s.options).forEach(opt => {
                     if (opt.value === "") return;
                     opt.disabled = Array.from(allSelects).some(other => other !== s && other.value === opt.value);
@@ -184,21 +185,59 @@
         }
 
         function renderManual() {
-            const stats = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
-            let html = `<p class="text-sm text-gray-400 italic mb-4">Roll 4d6 (drop lowest) or enter manually.</p><div class="grid grid-cols-2 gap-4">`;
-            stats.forEach(s => {
-                html += `<div class="flex flex-col gap-1"><label class="text-xs text-gray-400 uppercase">${s}</label><div class="flex gap-2">
-                    <input type="number" id="score-${s}" class="input-dark" value="10" min="3" max="20">
-                    <button onclick="rollStat('${s}')" class="bg-gray-700 px-2 rounded hover:bg-red-600"><i class="fa-solid fa-dice"></i></button></div></div>`;
-            });
-            html += `</div>`;
+            rolledPool = [];
+            let html = `<div class="mb-8"><p class="text-sm text-gray-400 italic mb-4">Roll 4d6 for each slot. We'll drop the lowest!</p>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4" id="roll-slots">`;
+            for (let i = 0; i < 6; i++) {
+                html += `<div id="slot-${i}" class="bg-[#111] p-4 rounded-lg text-center border border-gray-800">
+                    <button onclick="performPoolRoll(${i})" class="btn-red text-xs py-1 px-2 mb-2">Roll Slot ${i+1}</button>
+                    <div class="text-xs text-gray-500 italic h-4" id="dice-detail-${i}">-</div>
+                    <div class="text-2xl font-bold mt-1" id="total-${i}">?</div></div>`;
+            }
+            html += `</div></div><div id="assignment-area" class="hidden border-t border-gray-700 pt-6">
+                <h3 class="font-bold mb-4 text-red-400 uppercase text-xs">Assign Rolled Scores</h3>
+                <div class="grid grid-cols-2 gap-4" id="manual-assign-grid"></div></div>`;
             document.getElementById('method-container').innerHTML = html;
         }
 
-        function rollStat(stat) {
-            let rolls = [1,2,3,4].map(() => Math.floor(Math.random() * 6) + 1).sort();
-            rolls.shift();
-            document.getElementById(`score-${stat}`).value = rolls.reduce((a, b) => a + b, 0);
+        function performPoolRoll(index) {
+            const dice = [1,2,3,4].map(() => Math.floor(Math.random() * 6) + 1);
+            const sorted = [...dice].sort((a,b) => a - b);
+            const minVal = sorted[0];
+            let minDropped = false;
+            const diceHtml = dice.map(d => {
+                if (!minDropped && d === minVal) { minDropped = true; return `<span class="line-through opacity-50">${d}</span>`; }
+                return d;
+            }).join(' ');
+            const total = dice.reduce((a,b) => a + b, 0) - minVal;
+            rolledPool[index] = total;
+            document.getElementById(`dice-detail-${index}`).innerHTML = diceHtml;
+            document.getElementById(`total-${index}`).textContent = total;
+            document.querySelector(`#slot-${index} button`).disabled = true;
+            document.querySelector(`#slot-${index} button`).classList.add('opacity-50');
+            if (rolledPool.filter(r => r !== undefined).length === 6) renderManualAssignment();
+        }
+
+        function renderManualAssignment() {
+            const stats = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+            document.getElementById('assignment-area').classList.remove('hidden');
+            document.getElementById('manual-assign-grid').innerHTML = stats.map(s => `
+                <div><label class="text-xs text-gray-400 uppercase">${s}</label>
+                <select id="score-${s}" class="input-dark manual-select" onchange="validateManualSelection(this)">
+                    <option value="">Select...</option>
+                    ${rolledPool.map((r, i) => `<option value="${r}" data-idx="${i}">Roll ${i+1}: ${r}</option>`).join('')}
+                </select></div>`).join('');
+        }
+
+        function validateManualSelection(selected) {
+            const allSelects = document.querySelectorAll('.manual-select');
+            allSelects.forEach(s => {
+                Array.from(s.options).forEach(opt => {
+                    const idx = opt.getAttribute('data-idx');
+                    if (idx === null) return;
+                    opt.disabled = Array.from(allSelects).some(other => other !== s && other.options[other.selectedIndex].getAttribute('data-idx') === idx);
+                });
+            });
         }
 
         async function finishCharacter() {
