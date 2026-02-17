@@ -1,6 +1,6 @@
 import asyncio
 from backend.app.database import engine, Base, async_session
-from backend.app.models import Feature, Species, CharacterClass, ClassLevel
+from backend.app.models import Feature, Species, CharacterClass, ClassLevel, User, Character
 
 async def seed():
     async with engine.begin() as conn:
