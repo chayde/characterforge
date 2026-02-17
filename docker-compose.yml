@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./db.sqlite3:/app/db.sqlite3
+      - ./frontend/public/assets:/app/frontend/public/assets
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./db.sqlite3
+    restart: always

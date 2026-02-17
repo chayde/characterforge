@@ -34,9 +34,12 @@ export PYTHONPATH=$PYTHONPATH:.
 ```bash
 ./run.sh
 ```
+
+### 4. Run with Docker
+```bash
+docker-compose up --build
+```
 The application will be available at `http://localhost:8000`.
-- Creator: `http://localhost:8000/creator.html`
-- Character Sheet: `http://localhost:8000/?id=<char_id>`
 
 ## Development Conventions
 
