@@ -21,6 +21,8 @@ app.add_middleware(
 async def on_startup():
     await init_db()
 
+from .schemas import CharacterCreate, CharacterResponse
+
 # API Routes
 @app.get("/api/health")
 async def health():
@@ -31,13 +33,35 @@ async def get_classes(db: AsyncSession = Depends(get_session)):
     result = await db.execute(select(CharacterClass))
     return result.scalars().all()
 
-@app.get("/api/characters/{char_id}")
-async def get_character(char_id: int, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(Character).where(Character.id == char_id))
-    char = result.scalar_one_or_none()
-    if not char:
-        raise HTTPException(status_code=404, detail="Character not found")
-    return char
+@app.get("/api/species")
+async def get_species(db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(Species))
+    return result.scalars().all()
+
+@app.post("/api/characters", response_model=CharacterResponse)
+async def create_character(char_data: CharacterCreate, db: AsyncSession = Depends(get_session)):
+    # Fetch class to get hit die
+    class_result = await db.execute(select(CharacterClass).where(CharacterClass.id == char_data.class_id))
+    char_class = class_result.scalar_one_or_none()
+    if not char_class:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    # Basic HP Calculation: Hit Die + Con Modifier + (Level-1)*(Avg Hit Die + Con Modifier)
+    con_mod = (char_data.constitution - 10) // 2
+    avg_die = (char_class.hit_die // 2) + 1
+    max_hp = char_class.hit_die + con_mod + (char_data.level - 1) * (avg_die + con_mod)
+
+    new_char = Character(
+        **char_data.model_dump(),
+        max_hp=max_hp,
+        current_hp=max_hp
+    )
+    db.add(new_char)
+    await db.commit()
+    await db.refresh(new_char)
+    return new_char
+
+@app.get("/api/characters/{char_id}", response_model=CharacterResponse)
 
 # Serve Frontend
 frontend_path = os.path.join(os.getcwd(), "frontend/public")

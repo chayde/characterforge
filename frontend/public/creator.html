@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CharacterForge - Creator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            background-color: #1a1a1a; 
+            background-image: linear-gradient(to bottom, rgba(26, 26, 26, 0.9), rgba(26, 26, 26, 0.95)), url('assets/background.png');
+            background-attachment: fixed;
+            background-size: cover;
+            color: #e0e0e0; 
+            font-family: 'Inter', sans-serif; 
+        }
+        .step-card { display: none; }
+        .step-card.active { display: block; }
+        .input-dark { background: #333; border: 1px solid #444; padding: 10px; border-radius: 4px; width: 100%; color: white; }
+        .btn-red { background: #ef4444; color: white; padding: 10px 20px; border-radius: 4px; font-weight: bold; }
+        .btn-outline { border: 1px solid #555; padding: 10px 20px; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-2xl w-full bg-[#2d2d2d] rounded-xl shadow-2xl border border-gray-700 p-8">
+        <div id="step-1" class="step-card active">
+            <h2 class="text-3xl font-bold mb-6 text-red-500">Step 1: The Basics</h2>
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400 uppercase">Character Name</label>
+                    <input type="text" id="name" class="input-dark" placeholder="e.g. Silas Graves">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400 uppercase">Level (1-5)</label>
+                    <input type="number" id="level" class="input-dark" value="1" min="1" max="5">
+                </div>
+                <div class="flex justify-end">
+                    <button onclick="nextStep(2)" class="btn-red">Next: Identity</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-2" class="step-card">
+            <h2 class="text-3xl font-bold mb-6 text-red-500">Step 2: Identity</h2>
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400 uppercase">Species</label>
+                    <select id="species_id" class="input-dark"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-400 uppercase">Class</label>
+                    <select id="class_id" class="input-dark"></select>
+                </div>
+                <div class="flex justify-between">
+                    <button onclick="nextStep(1)" class="btn-outline">Back</button>
+                    <button onclick="nextStep(3)" class="btn-red">Next: Ability Scores</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-3" class="step-card">
+            <h2 class="text-3xl font-bold mb-6 text-red-500">Step 3: Ability Scores</h2>
+            <p class="text-sm text-gray-400 mb-6 italic">For the MVP, we use Standard Array: 15, 14, 13, 12, 10, 8</p>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="text-xs text-gray-400 uppercase">STR</label><input type="number" id="str" class="input-dark" value="15"></div>
+                <div><label class="text-xs text-gray-400 uppercase">DEX</label><input type="number" id="dex" class="input-dark" value="14"></div>
+                <div><label class="text-xs text-gray-400 uppercase">CON</label><input type="number" id="con" class="input-dark" value="13"></div>
+                <div><label class="text-xs text-gray-400 uppercase">INT</label><input type="number" id="int" class="input-dark" value="12"></div>
+                <div><label class="text-xs text-gray-400 uppercase">WIS</label><input type="number" id="wis" class="input-dark" value="10"></div>
+                <div><label class="text-xs text-gray-400 uppercase">CHA</label><input type="number" id="cha" class="input-dark" value="8"></div>
+            </div>
+            <div class="flex justify-between mt-8">
+                <button onclick="nextStep(2)" class="btn-outline">Back</button>
+                <button onclick="finishCharacter()" class="btn-red">Complete Character</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+
+        async function loadOptions() {
+            const speciesRes = await fetch('/api/species');
+            const species = await speciesRes.json();
+            const speciesSelect = document.getElementById('species_id');
+            species.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                speciesSelect.appendChild(opt);
+            });
+
+            const classesRes = await fetch('/api/classes');
+            const classes = await classesRes.json();
+            const classSelect = document.getElementById('class_id');
+            classes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                classSelect.appendChild(opt);
+            });
+        }
+
+        function nextStep(step) {
+            document.getElementById(`step-${currentStep}`).classList.remove('active');
+            document.getElementById(`step-${step}`).classList.add('active');
+            currentStep = step;
+        }
+
+        async function finishCharacter() {
+            const data = {
+                name: document.getElementById('name').value,
+                level: parseInt(document.getElementById('level').value),
+                species_id: parseInt(document.getElementById('species_id').value),
+                class_id: parseInt(document.getElementById('class_id').value),
+                strength: parseInt(document.getElementById('str').value),
+                dexterity: parseInt(document.getElementById('dex').value),
+                constitution: parseInt(document.getElementById('con').value),
+                intelligence: parseInt(document.getElementById('int').value),
+                wisdom: parseInt(document.getElementById('wis').value),
+                charisma: parseInt(document.getElementById('cha').value)
+            };
+
+            const response = await fetch('/api/characters', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                const char = await response.json();
+                window.location.href = `/?id=${char.id}`;
+            } else {
+                alert("Error creating character");
+            }
+        }
+
+        loadOptions();
+    </script>
+</body>
+</html>
