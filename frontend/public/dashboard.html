@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CharacterForge - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { 
+            background-color: #1a1a1a; 
+            background-image: linear-gradient(to bottom, rgba(26, 26, 26, 0.9), rgba(26, 26, 26, 0.95)), url('assets/background.png');
+            background-attachment: fixed;
+            background-size: cover;
+            color: #e0e0e0; 
+            font-family: 'Inter', sans-serif; 
+        }
+        .char-card { 
+            background: rgba(45, 45, 45, 0.9); 
+            border: 1px solid #444; 
+            transition: all 0.2s;
+        }
+        .char-card:hover { border-color: #ef4444; transform: translateY(-2px); }
+        .btn-red { background: #ef4444; color: white; padding: 10px 20px; border-radius: 4px; font-weight: bold; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl font-bold text-red-500">My Characters</h1>
+                <p class="text-gray-400">Your collection of heroes and adventurers.</p>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="logout()" class="text-gray-400 hover:text-white transition-colors">Logout</button>
+                <a href="/creator.html" class="btn-red">
+                    <i class="fa-solid fa-plus mr-2"></i>New Character
+                </a>
+            </div>
+        </div>
+
+        <div id="character-list" class="grid md:grid-cols-2 gap-6">
+            <!-- Loading state -->
+            <div class="col-span-full text-center py-20 text-gray-500">Loading your characters...</div>
+        </div>
+
+        <!-- Empty State (Hidden) -->
+        <div id="empty-state" class="hidden text-center py-20 bg-[#2d2d2d] rounded-xl border-2 border-dashed border-gray-700">
+            <i class="fa-solid fa-scroll text-6xl text-gray-600 mb-4"></i>
+            <h2 class="text-2xl font-bold mb-2">No Characters Found</h2>
+            <p class="text-gray-400 mb-8">It looks like you haven't started your journey yet.</p>
+            <a href="/creator.html" class="btn-red inline-block">Create Your First Character</a>
+        </div>
+    </div>
+
+    <script>
+        async function loadCharacters() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/characters', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+
+                const characters = await response.json();
+                const list = document.getElementById('character-list');
+                const empty = document.getElementById('empty-state');
+
+                if (characters.length === 0) {
+                    list.classList.add('hidden');
+                    empty.classList.remove('hidden');
+                    return;
+                }
+
+                list.innerHTML = characters.map(char => `
+                    <div class="char-card p-6 rounded-xl flex justify-between items-center shadow-lg">
+                        <div class="cursor-pointer flex-grow" onclick="window.location.href='/?id=${char.id}'">
+                            <h3 class="text-xl font-bold mb-1">${char.name}</h3>
+                            <p class="text-sm text-gray-400">Level ${char.level} Fighter</p>
+                        </div>
+                        <div class="flex gap-4">
+                             <button onclick="window.location.href='/?id=${char.id}'" class="text-blue-400 hover:text-blue-300 p-2">
+                                <i class="fa-solid fa-eye text-xl"></i>
+                            </button>
+                            <button onclick="deleteChar(${char.id}, '${char.name}')" class="text-gray-500 hover:text-red-500 p-2 transition-colors">
+                                <i class="fa-solid fa-trash-can text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function deleteChar(id, name) {
+            if (!confirm(`Are you sure you want to delete ${name}? This cannot be undone.`)) return;
+
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/characters/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                loadCharacters();
+            } else {
+                alert("Failed to delete character");
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        }
+
+        loadCharacters();
+    </script>
+</body>
+</html>

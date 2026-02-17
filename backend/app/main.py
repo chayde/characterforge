@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
+from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.future import select
@@ -89,6 +90,29 @@ async def create_character(
     await db.commit()
     await db.refresh(new_char)
     return new_char
+
+@app.get("/api/characters", response_model=List[CharacterResponse])
+async def list_characters(
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(select(Character).where(Character.owner_id == current_user.id))
+    return result.scalars().all()
+
+@app.delete("/api/characters/{char_id}")
+async def delete_character(
+    char_id: int,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(select(Character).where(Character.id == char_id, Character.owner_id == current_user.id))
+    char = result.scalar_one_or_none()
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+    
+    await db.delete(char)
+    await db.commit()
+    return {"message": "Character deleted"}
 
 @app.get("/api/characters/{char_id}", response_model=CharacterResponse)
 async def get_character(

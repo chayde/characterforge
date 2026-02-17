@@ -49,8 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (charId) {
         await loadCharacter(charId);
     } else {
-        // Eventually show a character list here
-        window.location.href = '/creator.html';
+        window.location.href = '/dashboard.html';
     }
 });
 
