@@ -18,7 +18,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="CharacterForge API")
 
-# ...
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.on_event("startup")
+async def on_startup():
+    await init_db()
 
 # Auth Routes
 @app.post("/api/register", response_model=UserResponse)
@@ -33,7 +43,6 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_session
         return new_user
     except Exception as e:
         logger.error(f"Error during registration: {str(e)}")
-        # Check if it's a unique constraint violation
         if "UNIQUE" in str(e):
             if "username" in str(e):
                 raise HTTPException(status_code=400, detail="Username already taken")
@@ -72,13 +81,11 @@ async def create_character(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    # Fetch class to get hit die
     class_result = await db.execute(select(CharacterClass).where(CharacterClass.id == char_data.class_id))
     char_class = class_result.scalar_one_or_none()
     if not char_class:
         raise HTTPException(status_code=404, detail="Class not found")
 
-    # Basic HP Calculation: Hit Die + Con Modifier + (Level-1)*(Avg Hit Die + Con Modifier)
     con_mod = (char_data.constitution - 10) // 2
     avg_die = (char_class.hit_die // 2) + 1
     max_hp = char_class.hit_die + con_mod + (char_data.level - 1) * (avg_die + con_mod)
