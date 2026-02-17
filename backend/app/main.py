@@ -62,8 +62,9 @@ async def create_character(char_data: CharacterCreate, db: AsyncSession = Depend
     return new_char
 
 @app.get("/api/characters/{char_id}", response_model=CharacterResponse)
-
-# Serve Frontend
-frontend_path = os.path.join(os.getcwd(), "frontend/public")
-if os.path.exists(frontend_path):
-    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+async def get_character(char_id: int, db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(Character).where(Character.id == char_id))
+    char = result.scalar_one_or_none()
+    if not char:
+        raise HTTPException(status_code=404, detail="Character not found")
+    return char
