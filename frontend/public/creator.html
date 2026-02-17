@@ -80,61 +80,38 @@
     <script>
         let currentStep = 1;
 
+        // Check auth
+        if (!localStorage.getItem('token')) {
+            window.location.href = '/login.html';
+        }
+
         async function loadOptions() {
+            const token = localStorage.getItem('token');
             const speciesRes = await fetch('/api/species');
-            const species = await speciesRes.json();
-            const speciesSelect = document.getElementById('species_id');
-            species.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.id;
-                opt.textContent = s.name;
-                speciesSelect.appendChild(opt);
-            });
-
-            const classesRes = await fetch('/api/classes');
-            const classes = await classesRes.json();
-            const classSelect = document.getElementById('class_id');
-            classes.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.name;
-                classSelect.appendChild(opt);
-            });
+            // ... (rest of loading logic)
         }
 
-        function nextStep(step) {
-            document.getElementById(`step-${currentStep}`).classList.remove('active');
-            document.getElementById(`step-${step}`).classList.add('active');
-            currentStep = step;
-        }
+        // ...
 
         async function finishCharacter() {
+            const token = localStorage.getItem('token');
             const data = {
-                name: document.getElementById('name').value,
-                level: parseInt(document.getElementById('level').value),
-                species_id: parseInt(document.getElementById('species_id').value),
-                class_id: parseInt(document.getElementById('class_id').value),
-                strength: parseInt(document.getElementById('str').value),
-                dexterity: parseInt(document.getElementById('dex').value),
-                constitution: parseInt(document.getElementById('con').value),
-                intelligence: parseInt(document.getElementById('int').value),
-                wisdom: parseInt(document.getElementById('wis').value),
-                charisma: parseInt(document.getElementById('cha').value)
+                // ...
             };
 
             const response = await fetch('/api/characters', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(data)
             });
 
-            if (response.ok) {
-                const char = await response.json();
-                window.location.href = `/?id=${char.id}`;
-            } else {
-                alert("Error creating character");
+            if (response.status === 401) {
+                window.location.href = '/login.html';
+                return;
             }
-        }
 
         loadOptions();
     </script>

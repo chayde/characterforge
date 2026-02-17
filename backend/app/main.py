@@ -4,7 +4,10 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from .database import init_db, get_session
-from .models import Character, CharacterClass, Species, ClassLevel, Feature
+from .models import Character, CharacterClass, Species, ClassLevel, Feature, User
+from .schemas import CharacterCreate, CharacterResponse, UserCreate, UserResponse, Token
+from .auth import get_password_hash, verify_password, create_access_token, get_current_user
+from fastapi.security import OAuth2PasswordRequestForm
 import os
 
 app = FastAPI(title="CharacterForge API")
@@ -21,7 +24,28 @@ app.add_middleware(
 async def on_startup():
     await init_db()
 
-from .schemas import CharacterCreate, CharacterResponse
+# Auth Routes
+@app.post("/api/register", response_model=UserResponse)
+async def register(user_data: UserCreate, db: AsyncSession = Depends(get_session)):
+    hashed_pwd = get_password_hash(user_data.password)
+    new_user = User(username=user_data.username, email=user_data.email, hashed_password=hashed_pwd)
+    db.add(new_user)
+    try:
+        await db.commit()
+        await db.refresh(new_user)
+        return new_user
+    except:
+        raise HTTPException(status_code=400, detail="Username or email already exists")
+
+@app.post("/api/login", response_model=Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(User).where(User.username == form_data.username))
+    user = result.scalar_one_or_none()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+    
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 # API Routes
 @app.get("/api/health")
@@ -39,7 +63,11 @@ async def get_species(db: AsyncSession = Depends(get_session)):
     return result.scalars().all()
 
 @app.post("/api/characters", response_model=CharacterResponse)
-async def create_character(char_data: CharacterCreate, db: AsyncSession = Depends(get_session)):
+async def create_character(
+    char_data: CharacterCreate, 
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
     # Fetch class to get hit die
     class_result = await db.execute(select(CharacterClass).where(CharacterClass.id == char_data.class_id))
     char_class = class_result.scalar_one_or_none()
@@ -53,6 +81,7 @@ async def create_character(char_data: CharacterCreate, db: AsyncSession = Depend
 
     new_char = Character(
         **char_data.model_dump(),
+        owner_id=current_user.id,
         max_hp=max_hp,
         current_hp=max_hp
     )
@@ -62,8 +91,12 @@ async def create_character(char_data: CharacterCreate, db: AsyncSession = Depend
     return new_char
 
 @app.get("/api/characters/{char_id}", response_model=CharacterResponse)
-async def get_character(char_id: int, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(Character).where(Character.id == char_id))
+async def get_character(
+    char_id: int, 
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    result = await db.execute(select(Character).where(Character.id == char_id, Character.owner_id == current_user.id))
     char = result.scalar_one_or_none()
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")

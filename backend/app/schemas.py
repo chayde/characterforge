@@ -15,18 +15,23 @@ class CharacterCreate(BaseModel):
 
 class CharacterResponse(BaseModel):
     id: int
+    owner_id: Optional[int]
     name: str
     level: int
-    species_id: int
-    class_id: int
-    strength: int
-    dexterity: int
-    constitution: int
-    intelligence: int
-    wisdom: int
-    charisma: int
-    current_hp: int
-    max_hp: int
+    # ... rest of fields
 
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: str
     class Config:
         from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str

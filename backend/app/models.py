@@ -44,9 +44,17 @@ class ClassLevel(Base):
     proficiency_bonus = Column(Integer)
     features_desc = Column(Text) # Summary text
 
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    email = Column(String, unique=True, index=True)
+
 class Character(Base):
     __tablename__ = "characters"
     id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"))
     name = Column(String, index=True)
     level = Column(Integer, default=1)
     species_id = Column(Integer, ForeignKey("species.id"))

@@ -37,17 +37,34 @@ function rollDice(die, bonus, label) {
 
 // Initial setup
 document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const charId = urlParams.get('id');
 
     if (charId) {
         await loadCharacter(charId);
+    } else {
+        // Eventually show a character list here
+        window.location.href = '/creator.html';
     }
 });
 
 async function loadCharacter(id) {
+    const token = localStorage.getItem('token');
     try {
-        const response = await fetch(`/api/characters/${id}`);
+        const response = await fetch(`/api/characters/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+            return;
+        }
         if (!response.ok) throw new Error("Character not found");
         const char = await response.json();
 
