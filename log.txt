@@ -169,3 +169,9 @@ Attaching to chracterforge_app_1
 [36mapp_1  |[0m INFO:     172.18.0.1:50178 - "POST /api/characters HTTP/1.1" 200 OK
 [36mapp_1  |[0m INFO:     172.18.0.1:50178 - "GET /?id=1 HTTP/1.1" 200 OK
 [36mapp_1  |[0m INFO:     172.18.0.1:50178 - "GET /api/characters/1 HTTP/1.1" 200 OK
+[36mapp_1  |[0m INFO:     Shutting down
+[36mapp_1  |[0m INFO:     Waiting for application shutdown.
+[36mapp_1  |[0m INFO:     Application shutdown complete.
+[36mapp_1  |[0m INFO:     Finished server process [1]
+[36mchracterforge_app_1 exited with code 0
+[0m

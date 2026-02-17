@@ -111,7 +111,9 @@
                 document.getElementById('message').textContent = 'Account created! Please login.';
                 showForm('login');
             } else {
-                document.getElementById('message').textContent = 'Error creating account';
+                const errorData = await response.json();
+                document.getElementById('message').className = 'mt-4 text-center text-sm font-medium text-red-400';
+                document.getElementById('message').textContent = errorData.detail || 'Error creating account';
             }
         };
 

@@ -10,20 +10,15 @@ from .schemas import CharacterCreate, CharacterResponse, UserCreate, UserRespons
 from .auth import get_password_hash, verify_password, create_access_token, get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="CharacterForge API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.on_event("startup")
-async def on_startup():
-    await init_db()
+# ...
 
 # Auth Routes
 @app.post("/api/register", response_model=UserResponse)
@@ -34,9 +29,17 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_session
     try:
         await db.commit()
         await db.refresh(new_user)
+        logger.info(f"New user registered: {new_user.username}")
         return new_user
-    except:
-        raise HTTPException(status_code=400, detail="Username or email already exists")
+    except Exception as e:
+        logger.error(f"Error during registration: {str(e)}")
+        # Check if it's a unique constraint violation
+        if "UNIQUE" in str(e):
+            if "username" in str(e):
+                raise HTTPException(status_code=400, detail="Username already taken")
+            if "email" in str(e):
+                raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail=f"Registration failed: {str(e)}")
 
 @app.post("/api/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_session)):
