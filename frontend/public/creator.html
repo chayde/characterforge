@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CharacterForge - Creator</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body { 
             background-color: #1a1a1a; 
@@ -24,6 +25,7 @@
 <body class="min-h-screen flex items-center justify-center p-4">
 
     <div class="max-w-2xl w-full bg-[#2d2d2d] rounded-xl shadow-2xl border border-gray-700 p-8">
+        <!-- Step 1: The Basics -->
         <div id="step-1" class="step-card active">
             <h2 class="text-3xl font-bold mb-6 text-red-500">Step 1: The Basics</h2>
             <div class="space-y-6">
@@ -41,6 +43,7 @@
             </div>
         </div>
 
+        <!-- Step 2: Identity -->
         <div id="step-2" class="step-card">
             <h2 class="text-3xl font-bold mb-6 text-red-500">Step 2: Identity</h2>
             <div class="space-y-6">
@@ -59,17 +62,21 @@
             </div>
         </div>
 
+        <!-- Step 3: Ability Scores -->
         <div id="step-3" class="step-card">
-            <h2 class="text-3xl font-bold mb-6 text-red-500">Step 3: Ability Scores</h2>
-            <p class="text-sm text-gray-400 mb-6 italic">For the MVP, we use Standard Array: 15, 14, 13, 12, 10, 8</p>
-            <div class="grid grid-cols-2 gap-4">
-                <div><label class="text-xs text-gray-400 uppercase">STR</label><input type="number" id="str" class="input-dark" value="15"></div>
-                <div><label class="text-xs text-gray-400 uppercase">DEX</label><input type="number" id="dex" class="input-dark" value="14"></div>
-                <div><label class="text-xs text-gray-400 uppercase">CON</label><input type="number" id="con" class="input-dark" value="13"></div>
-                <div><label class="text-xs text-gray-400 uppercase">INT</label><input type="number" id="int" class="input-dark" value="12"></div>
-                <div><label class="text-xs text-gray-400 uppercase">WIS</label><input type="number" id="wis" class="input-dark" value="10"></div>
-                <div><label class="text-xs text-gray-400 uppercase">CHA</label><input type="number" id="cha" class="input-dark" value="8"></div>
+            <h2 class="text-3xl font-bold mb-2 text-red-500">Step 3: Ability Scores</h2>
+            
+            <div class="mb-6">
+                <label class="block text-xs text-gray-400 uppercase mb-2">Generation Method</label>
+                <select id="gen-method" class="input-dark" onchange="updateGenMethod()">
+                    <option value="array">Standard Array</option>
+                    <option value="pointbuy">Point Buy</option>
+                    <option value="manual">Manual / Rolled</option>
+                </select>
             </div>
+
+            <div id="method-container" class="space-y-6"></div>
+
             <div class="flex justify-between mt-8">
                 <button onclick="nextStep(2)" class="btn-outline">Back</button>
                 <button onclick="finishCharacter()" class="btn-red">Complete Character</button>
@@ -79,8 +86,10 @@
 
     <script>
         let currentStep = 1;
+        let scores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+        const pointBuyCosts = { 8:0, 9:1, 10:2, 11:3, 12:4, 13:5, 14:7, 15:9 };
+        let pointsRemaining = 27;
 
-        // Check auth
         if (!localStorage.getItem('token')) {
             window.location.href = '/login.html';
         }
@@ -88,30 +97,140 @@
         async function loadOptions() {
             const token = localStorage.getItem('token');
             const speciesRes = await fetch('/api/species');
-            // ... (rest of loading logic)
+            const species = await speciesRes.json();
+            const speciesSelect = document.getElementById('species_id');
+            species.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                speciesSelect.appendChild(opt);
+            });
+
+            const classesRes = await fetch('/api/classes');
+            const classes = await classesRes.json();
+            const classSelect = document.getElementById('class_id');
+            classes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                classSelect.appendChild(opt);
+            });
+            updateGenMethod();
         }
 
-        // ...
+        function nextStep(step) {
+            document.getElementById(`step-${currentStep}`).classList.remove('active');
+            document.getElementById(`step-${step}`).classList.add('active');
+            currentStep = step;
+        }
+
+        function updateGenMethod() {
+            const method = document.getElementById('gen-method').value;
+            const container = document.getElementById('method-container');
+            if (method === 'array') renderStandardArray();
+            else if (method === 'pointbuy') renderPointBuy();
+            else renderManual();
+        }
+
+        function renderStandardArray() {
+            const values = [15, 14, 13, 12, 10, 8];
+            const stats = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+            let html = `<p class="text-sm text-gray-400 italic mb-4">Assign each value once: 15, 14, 13, 12, 10, 8</p><div class="grid grid-cols-2 gap-4">`;
+            stats.forEach(s => {
+                html += `<div><label class="text-xs text-gray-400 uppercase">${s}</label>
+                    <select id="score-${s}" class="input-dark array-select" onchange="validateArray(this)">
+                        <option value="">Select...</option>
+                        ${values.map(v => `<option value="${v}">${v}</option>`).join('')}
+                    </select></div>`;
+            });
+            html += `</div>`;
+            document.getElementById('method-container').innerHTML = html;
+        }
+
+        function validateArray(selected) {
+            const allSelects = document.querySelectorAll('.array-select');
+            allSelects.forEach(s => {
+                Array.from(s.options).forEach(opt => {
+                    if (opt.value === "") return;
+                    opt.disabled = Array.from(allSelects).some(other => other !== s && other.value === opt.value);
+                });
+            });
+        }
+
+        function renderPointBuy() {
+            const stats = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+            pointsRemaining = 27;
+            let html = `<div class="flex justify-between items-center mb-4 bg-[#111] p-3 rounded"><span>Points Remaining</span><span id="points-display" class="text-2xl font-bold text-green-500">27</span></div><div class="space-y-3">`;
+            stats.forEach(s => {
+                scores[s] = 8;
+                html += `<div class="flex justify-between items-center bg-[#333] p-2 rounded"><span class="uppercase font-bold">${s}</span><div class="flex items-center gap-4">
+                    <button onclick="changePB('${s}', -1)" class="w-8 h-8 bg-gray-600 rounded">-</button>
+                    <span id="pb-${s}" class="text-xl font-bold w-6 text-center">8</span>
+                    <button onclick="changePB('${s}', 1)" class="w-8 h-8 bg-gray-600 rounded">+</button></div></div>`;
+            });
+            html += `</div>`;
+            document.getElementById('method-container').innerHTML = html;
+        }
+
+        function changePB(stat, delta) {
+            const newVal = scores[stat] + delta;
+            if (newVal < 8 || newVal > 15) return;
+            const costDiff = pointBuyCosts[newVal] - pointBuyCosts[scores[stat]];
+            if (pointsRemaining - costDiff < 0) return;
+            scores[stat] = newVal;
+            pointsRemaining -= costDiff;
+            document.getElementById(`pb-${stat}`).textContent = newVal;
+            document.getElementById('points-display').textContent = pointsRemaining;
+        }
+
+        function renderManual() {
+            const stats = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+            let html = `<p class="text-sm text-gray-400 italic mb-4">Roll 4d6 (drop lowest) or enter manually.</p><div class="grid grid-cols-2 gap-4">`;
+            stats.forEach(s => {
+                html += `<div class="flex flex-col gap-1"><label class="text-xs text-gray-400 uppercase">${s}</label><div class="flex gap-2">
+                    <input type="number" id="score-${s}" class="input-dark" value="10" min="3" max="20">
+                    <button onclick="rollStat('${s}')" class="bg-gray-700 px-2 rounded hover:bg-red-600"><i class="fa-solid fa-dice"></i></button></div></div>`;
+            });
+            html += `</div>`;
+            document.getElementById('method-container').innerHTML = html;
+        }
+
+        function rollStat(stat) {
+            let rolls = [1,2,3,4].map(() => Math.floor(Math.random() * 6) + 1).sort();
+            rolls.shift();
+            document.getElementById(`score-${stat}`).value = rolls.reduce((a, b) => a + b, 0);
+        }
 
         async function finishCharacter() {
+            const method = document.getElementById('gen-method').value;
+            const finalScores = {};
+            const stats = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+            if (method === 'pointbuy') stats.forEach(s => finalScores[s] = scores[s]);
+            else stats.forEach(s => finalScores[s] = parseInt(document.getElementById(`score-${s}`).value) || 10);
+
             const token = localStorage.getItem('token');
             const data = {
-                // ...
+                name: document.getElementById('name').value,
+                level: parseInt(document.getElementById('level').value),
+                species_id: parseInt(document.getElementById('species_id').value),
+                class_id: parseInt(document.getElementById('class_id').value),
+                strength: finalScores.str, dexterity: finalScores.dex, constitution: finalScores.con,
+                intelligence: finalScores.int, wisdom: finalScores.wis, charisma: finalScores.cha
             };
 
             const response = await fetch('/api/characters', {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(data)
             });
 
-            if (response.status === 401) {
-                window.location.href = '/login.html';
-                return;
+            if (response.ok) {
+                const char = await response.json();
+                window.location.href = `/?id=${char.id}`;
+            } else {
+                alert("Error creating character");
             }
+        }
 
         loadOptions();
     </script>
