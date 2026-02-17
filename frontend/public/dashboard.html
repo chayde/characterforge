@@ -77,7 +77,7 @@
                 const empty = document.getElementById('empty-state');
 
                 if (characters.length === 0) {
-                    list.classList.add('hidden');
+                    list.innerHTML = ""; // Clear loading message
                     empty.classList.remove('hidden');
                     return;
                 }
